@@ -1,0 +1,12 @@
+version: '2'
+
+services:
+  jenkins:
+    image: jenkins/jenkins
+    environment:
+      JENKINS_OPTS: --prefix=/jenkins
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+volumes:
+  jenkins_home:

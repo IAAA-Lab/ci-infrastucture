@@ -1,0 +1,18 @@
+version: '2'
+services:
+  appupdater:
+    image: docker/compose:latest
+    environment:
+      MACHINE_FQDN=pica.cps.unizar.es
+
+      SECRET_KEY_BASE=cmX8B2BUVXMKzm82XA3sPm2PpUGJSg
+      PORTUS_PASSWORD=EAJEKt224uAhJhpn
+      DATABASE_PASSWORD=EAJEKt224uAhJhpn
+
+    command: \
+        curl https://codeload.github.com/IAAA-Lab/cluster-infrastructure/zip/master -o ./project.zip && \
+        unzip -o ./project.zip && \
+        docker-compose
+    working_dir: /workdir
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
