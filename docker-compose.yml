@@ -1,18 +1,127 @@
-version: '2'
+version: "2"
+
 services:
-  appupdater:
-    image: docker/compose:latest
+  portus:
+    image: opensuse/portus:head
+    env_file:
+      - portus.env
     environment:
-      MACHINE_FQDN=pica.cps.unizar.es
-
-      SECRET_KEY_BASE=cmX8B2BUVXMKzm82XA3sPm2PpUGJSg
-      PORTUS_PASSWORD=EAJEKt224uAhJhpn
-      DATABASE_PASSWORD=EAJEKt224uAhJhpn
-
-    command: \
-        curl https://codeload.github.com/IAAA-Lab/cluster-infrastructure/zip/master -o ./project.zip && \
-        unzip -o ./project.zip && \
-        docker-compose
-    working_dir: /workdir
+      # Machine name
+      PORTUS_MACHINE_FQDN_VALUE: ${MACHINE_FQDN}
+      # Login
+      PORTUS_DB_PASSWORD: ${SECRET_MASTER_PASSWORD}
+      PORTUS_PASSWORD: ${SECRET_MASTER_PASSWORD}
+      PORTUS_SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+    links:
+      - portus-db
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certificates:/certificates:ro
+      - portus-static:/srv/Portus/public
+
+  background:
+    image: opensuse/portus:head
+    depends_on:
+      - portus
+      - portus-db
+    env_file:
+      - portus.env
+    environment:
+      # Machine name
+      PORTUS_MACHINE_FQDN_VALUE: ${MACHINE_FQDN}
+      # Login
+      PORTUS_DB_PASSWORD: ${SECRET_MASTER_PASSWORD}
+      PORTUS_PASSWORD: ${SECRET_MASTER_PASSWORD}
+      PORTUS_SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      # Theoretically not needed, but cconfig's been buggy on this...
+      CCONFIG_PREFIX: PORTUS
+      # Activates background mode
+      PORTUS_BACKGROUND: "true"
+    links:
+      - portus-db
+    volumes:
+      - certificates:/certificates:ro
+
+  portus-db:
+    image: library/mariadb:10.0.23
+    command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci --init-connect='SET NAMES UTF8;' --innodb-flush-log-at-trx-commit=0
+    environment:
+      MYSQL_DATABASE: portus_production
+      # Again, the password shouldn't be handled like this.
+      MYSQL_ROOT_PASSWORD: ${SECRET_MASTER_PASSWORD}
+    volumes:
+      - portus-db:/var/lib/mysql
+
+  registry:
+    image: registry:2.6
+    env_file:
+      - registry.env
+    environment:
+      # Authentication
+      REGISTRY_AUTH_TOKEN_REALM: https://${MACHINE_FQDN}/v2/token
+      REGISTRY_AUTH_TOKEN_SERVICE: ${MACHINE_FQDN}
+      REGISTRY_AUTH_TOKEN_ISSUER: ${MACHINE_FQDN}
+      # Portus endpoint
+      REGISTRY_NOTIFICATIONS_ENDPOINTS: >
+        - name: portus
+          url: https://${MACHINE_FQDN}/v2/webhooks/events
+          timeout: 2000ms
+          threshold: 5
+          backoff: 1s
+    volumes:
+      - registry:/var/lib/registry
+      - certificates:/secrets:ro
+    links:
+      - portus
+
+  jenkins:
+    image: jenkins/jenkins
+    environment:
+      JENKINS_OPTS: --prefix=/jenkins
+    volumes:
+      - jenkins-home:/var/jenkins_home
+
+  sonarqube:
+    image: sonarqube:7.1-alpine
+    env_file:
+      - sonarqube.env
+    environment:
+      SONARQUBE_JDBC_PASSWORD: ${SECRET_MASTER_PASSWORD}
+    command: -Dsonar.web.context=/sonar
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+    links:
+      - sonarqube-db
+
+  sonarqube-db:
+    image: postgres:9-alpine
+    env_file:
+      - sonarqube.env
+    environment:
+      POSTGRES_PASSWORD: ${SECRET_MASTER_PASSWORD}
+    volumes:
+      - sonarqube-postgres-data:/var/lib/postgresql/data
+
+  nginx:
+    build: ./nginx
+    image: ${MACHINE_FQDN}/infrastucture/portus-nginx
+    volumes:
+      - certificates:/secrets:ro
+      - portus-static:/srv/Portus/public:ro
+    ports:
+      - 80:80
+      - 443:443
+    links:
+      - registry
+      - portus
+      - jenkins
+      - sonarqube
+
+volumes:
+  portus-static:
+  portus-db:
+  registry:
+  jenkins-home:
+  sonarqube-data:
+  sonarqube-postgres-data:
+  certificates:
+    external: true
