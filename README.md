@@ -1,67 +1,87 @@
-# Portus on Docker compose
+# Continuous Integration Infrastucture
 
-This example is two-folded, as it contains the same example deployed in two
-ways:
+This is a CI infrastructure that offers:
 
-- A production-ready setup where all communication is encrypted.
-- A version which doesn't use encryption for simplicity.
+- **Jenkins:** A continuous integration software that builds, tests and deploys artifacts based on it's source code and a given configuration
+- **Docker Registry:** A repository of `docker images` where a `docker daemon` can pull from.
+- **Portus:** A tool that allows user control over Docker Registry's `images`
+- **Sonarqube:** A static code analyzer
 
-As explained in the [README file](../README.md) above, this example uses the
-[official Portus image](https://hub.docker.com/r/opensuse/portus/), so it has
-nothing to do with the docker-compose setup used for development in the root
-directory.
+## Deploy
 
-## The hostname
+In order to deploy this infrastucture, the host machine needs:
+- `docker`
+- `docker-compose`
 
-This example needs the hostname in multiple places. All this has been delegated
-into Compose's support of the `.env` file. For this reason, you will need to
-change hostname set in this file, and also in the `nginx/nginx.conf` file.
+### Getting the source code
 
-## Certificates
+You can download the `source code` by cloning it o by downloading and copying. The easiest way (and the _less dependent_) is by using a `git docker container` like `alpine/git`.
 
-This example is set up in a way so you can use self-signed certificates. Of
-course this is not something you would want to do in production, but this way we
-ease up the task for those who are curious to try it out.
+For the first time, **go to the directory** where you want to clone the project and **execute**:
 
-## The setup
+```bash
+GIT_REPO=https://github.com/IAAA-Lab/ci-infrastucture \
+docker run -it --rm -u $(id -u):$(id -u) -v $(pwd):/git alpine/git clone $GIT_REPO
+```
 
-### Secure example
+If you already have cloned it, you can update all by pulling with the same command
 
-The secure example uses an NGinx container that proxies between the Portus and
-the Registry containers. Communication is always encrypted, but note that this
-is not strictly necessary. Because of this proxy setup, both Portus and the
-registry end up using the same hostname. Practically speaking:
+```bash
+docker run -it --rm -u $(id -u):$(id -u) -v $(pwd):/git alpine/git pull origin master
+```
 
-- When setting up the registry for the first time in Portus, you have to check
-  the "Use SSL" box and enter the hostname without specifying any ports.
-- From the CLI, docker images should be prefixed with the hostname, but without
-  specifying any ports (e.g. "my.hostname.com/opensuse/amd64:latest")
+### Prepare your certs
 
-### Insecure example
+HTTPS certificates are mandatory for this project. The current decision is to store it in an external volume called `certificates`.
 
-The other example is as minimal as possible. Because of this, there's no NGinx
-proxy and the Portus and the Registry containers are bound to their respective
-ports. Moreover, SSL has not been configured on this setup. Because of this:
+There are different ways of doing that but many steps are common.
 
-- When setting up the registry for the first time in Portus, you do **not** have
-  to check the "Use SSL" box. Moreover, the hostname has to end with the 5000 port
-  (e.g. "my.hostname.com:5000").
-- From the CLI, docker images should be prefixed with the hostname and the 5000
-  port (e.g. "my.hostname.com:5000/opensuse/amd64:latest")
+#### The `docker cp` way
 
-### Serving static assets
+Assuming you have your certs in an accesible path:
 
-The static assets can be served in two ways:
+1. Create the external volume: `docker volume create certificates`
+1. Run a data container using `busybox` image which uses this volume: `docker run -it --rm -v certificates:/vol --name certs -d busybox`
+1. Copy the cert to the volume: `docker cp $CERT_LOCATION certs:vol/domain.crt`
+1. Copy the key to the volume: `docker cp $KEY_LOCATION certs:vol/domain.key`
+1. Stop the container (it will auto-remove because of the `--rm` opt): `docker stop certs`
 
-- With NGinx: this is the case of the *secure* example, in which we share the
-  `public` directory between the NGinx and the Portus containers. This way, all
-  assets are served directly and faster from the NGinx container.
-- With Rails by setting the `RAILS_SERVE_STATIC_FILES` environment variable to
-  true. This is done in the *insecure* example, and it's recommended in
-  scenarios where you don't want an extra container for managing your static assets.
+#### The `zip` way
 
-## Acknowledgements
+Assuming you have your certs in a tar file called `certificates.tar`:
+```
+- root directory
+|- domain.crt
+|- domain.key
+```
 
-Many thanks to [@Djelibeybi](https://github.com/Djelibeybi), since we
-borrowed a lot of the NGinx configuration from
-[his repository](https://github.com/Djelibeybi/Portus-On-OracleLinux7).
+1. Create the external volume: `docker volume create certificates`
+1. Run a work container using `busybox` image which uses this volume: `docker run --rm -v $2:/vol -v $(pwd):/ext busybox tar xvf /ext/certificates.tar --strip 1 -C /vol;`
+
+### 3... 2... 1... Ignition
+
+Once we have the code, deploying it is as simple as executing de proper `docker-compose` script:
+
+```bash
+MACHINE_FQDN=https://example.org \
+SECRET_KEY_BASE=randomme \
+SECRET_MASTER_PASSWORD=changeme \
+docker-compose -f docker-compose.yml up -d
+```
+**Note1:** If you don't understand certain parts of the script, read the section bellow to learn more about `docker-compose`.
+
+**Note2:** If your host uses `rancher`, your can deploy it with:
+
+
+## Development
+
+Usually, when using `docker-compose`, we need a way to store host specific values or secrets. One way of doing that (**not the most secure**) is by using `enviroment variables`. The problem is that you need to provide this `env` every time you run the command.  
+
+There is a handy feature in `docker-compose` that helps a lot in a development enviroment, the `.env` file.
+
+Create a `.env` file with the `env variables` that you whant to use in the `docker-compose` command. The used ones in this project are:
+```plain
+MACHINE_FQDN={your machine FQDN or localhost}
+SECRET_KEY_BASE={a random key base}
+SECRET_MASTER_PASSWORD={a password to access all services. KEEP IT SECRET}
+```
