@@ -104,6 +104,8 @@ services:
   nginx:
     build: ./nginx
     image: ${MACHINE_FQDN}/infrastucture/portus-nginx
+    environment:
+      MACHINE_FQDN: ${MACHINE_FQDN}
     volumes:
       - certificates:/secrets:ro
       - portus-static:/srv/Portus/public:ro
