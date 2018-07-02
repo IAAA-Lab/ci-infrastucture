@@ -3,6 +3,7 @@ version: "2"
 services:
   portus:
     image: opensuse/portus:head
+    restart: always
     env_file:
       - portus.env
     environment:
@@ -20,6 +21,7 @@ services:
 
   background:
     image: opensuse/portus:head
+    restart: always
     depends_on:
       - portus
       - portus-db
@@ -43,6 +45,7 @@ services:
 
   portus-db:
     image: library/mariadb:10.0.23
+    restart: always
     command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci --init-connect='SET NAMES UTF8;' --innodb-flush-log-at-trx-commit=0
     environment:
       MYSQL_DATABASE: portus_production
@@ -53,6 +56,7 @@ services:
 
   registry:
     image: registry:2.6
+    restart: always
     env_file:
       - registry.env
     environment:
@@ -75,6 +79,7 @@ services:
 
   jenkins:
     image: jenkins/jenkins
+    restart: always
     environment:
       JENKINS_OPTS: --prefix=/jenkins
     volumes:
@@ -82,6 +87,7 @@ services:
 
   sonarqube:
     image: sonarqube:7.1-alpine
+    restart: always
     env_file:
       - sonarqube.env
     environment:
@@ -94,6 +100,7 @@ services:
 
   sonarqube-db:
     image: postgres:9-alpine
+    restart: always
     env_file:
       - sonarqube.env
     environment:
@@ -104,6 +111,7 @@ services:
   nginx:
     build: ./nginx
     image: ${MACHINE_FQDN}/infrastucture/portus-nginx
+    restart: always
     environment:
       MACHINE_FQDN: ${MACHINE_FQDN}
     volumes:
