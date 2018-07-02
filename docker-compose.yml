@@ -80,6 +80,7 @@ services:
   jenkins:
     image: jenkins/jenkins
     restart: always
+    privileged: "true"
     environment:
       JENKINS_OPTS: --prefix=/jenkins
     volumes:
