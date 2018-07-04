@@ -4,8 +4,3 @@ services:
   nginx:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-
-  sonarqube:
-    # command: ""
-    ports:
-      - 9001:9000

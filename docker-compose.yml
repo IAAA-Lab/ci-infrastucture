@@ -82,38 +82,6 @@ services:
     links:
       - portus
 
-  jenkins:
-    image: jenkins/jenkins
-    restart: always
-    privileged: "true"
-    environment:
-      JENKINS_OPTS: --prefix=/jenkins
-    volumes:
-      - jenkins-home:/var/jenkins_home
-
-  sonarqube:
-    image: sonarqube:7.1-alpine
-    restart: always
-    env_file:
-      - sonarqube.env
-    environment:
-      SONARQUBE_JDBC_PASSWORD: ${SECRET_MASTER_PASSWORD}
-    command: -Dsonar.web.context=/sonar
-    volumes:
-      - sonarqube-data:/opt/sonarqube/data
-    links:
-      - sonarqube-db
-
-  sonarqube-db:
-    image: postgres:9-alpine
-    restart: always
-    env_file:
-      - sonarqube.env
-    environment:
-      POSTGRES_PASSWORD: ${SECRET_MASTER_PASSWORD}
-    volumes:
-      - sonarqube-postgres-data:/var/lib/postgresql/data
-
   nginx:
     build: ./nginx
     image: ${MACHINE_FQDN}/infrastucture/portus-nginx
@@ -129,15 +97,10 @@ services:
     links:
       - registry
       - portus
-      - jenkins
-      - sonarqube
 
 volumes:
   portus-static:
   portus-db:
   registry:
-  jenkins-home:
-  sonarqube-data:
-  sonarqube-postgres-data:
   certificates:
     external: true
