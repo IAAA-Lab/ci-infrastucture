@@ -4,6 +4,9 @@ services:
   portus:
     image: opensuse/portus:head
     restart: always
+    depends_on:
+      - background
+      - portus-db
     env_file:
       - portus.env
     environment:
@@ -13,6 +16,9 @@ services:
       PORTUS_DB_PASSWORD: ${SECRET_MASTER_PASSWORD}
       PORTUS_PASSWORD: ${SECRET_MASTER_PASSWORD}
       PORTUS_SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+
+      RAILS_SERVE_STATIC_FILES: 'true'
+      RAILS_RELATIVE_URL_ROOT: /portus
     links:
       - portus-db
     volumes:
@@ -23,7 +29,6 @@ services:
     image: opensuse/portus:head
     restart: always
     depends_on:
-      - portus
       - portus-db
     env_file:
       - portus.env
