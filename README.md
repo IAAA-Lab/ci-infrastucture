@@ -7,15 +7,14 @@ This is a CI infrastructure that offers:
 - **Portus:** A tool that allows user control over Docker Registry's `images`
 - **Sonarqube:** A static code analyzer
 
-## Contenidos
-<!-- TOC START min:1 max:3 link:true update:true -->
-- [Continuous Integration Infrastucture](#continuous-integration-infrastucture)
-  - [Deploy](#deploy)
-    - [Getting the source code](#getting-the-source-code)
-    - [Prepare your certs](#prepare-your-certs)
-    - [3... 2... 1... Ignition](#3-2-1-ignition)
-    - [Deploying in](#deploying-in)
-  - [Development](#development)
+# TOC
+<!-- TOC START min:2 max:3 link:true update:true -->
+- [Deploy](#deploy)
+  - [Getting the source code](#getting-the-source-code)
+  - [Prepare your certs](#prepare-your-certs)
+  - [3... 2... 1... Ignition](#3-2-1-ignition)
+  - [Deploy in Rancher OS](#deploy-in-rancher-os)
+- [Development](#development)
 
 <!-- TOC END -->
 
@@ -97,11 +96,9 @@ docker/compose:1.20.0 \
 -f docker-compose.yml up -d
 ```
 
-### Desplegado en Rancher OS
+### Deploy in Rancher OS
 
 Rancher OS, well known as an operative system that relies on `docker containers`, is an interesting choice when you are deploying clusters. Due to some limitations, it's perfect for designing evolutive infrastuctures.
-
-Para desplegar el sistema, lo mejor es hacerlo desde de un contenedor con las dependencias necesarias (`git`, `docker` y `docker-compose`). La imagen escogida es `docteurklein/compose-ci`, que tiene un propósito similar, pero usa `webhooks`. NO ES BUENA IDEA utilizar esa imagen para su propósito real debido al agujero de seguridad que supone exponer este servicio.
 
 Deploying in Rancher OS may be as simple as connecting to `ssh` and executing one command. That command has two important points: The base image, which is perfect thanks to it's dependencies, and the command itself, which clones a given `git` repo and deploys it with docker-compose.
 
@@ -119,7 +116,7 @@ docker run --rm \
 docteurklein/compose-ci \
 sh -c "${GIT_CLONE_COMMAND} && ${DOCKER_COMPOSE_COMAND}"
 ```
-Notas:
+Note:
 - `--rm` makes the container auto-removable.
 - `-w` defines `workdir`. `docker-compose` uses it as `stack` name if none is provided.
 - Specifying the `docker-compose.yml` file ignores the `docker-compose.override.yml` which is used in development.
