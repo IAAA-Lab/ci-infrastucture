@@ -84,7 +84,7 @@ services:
 
   nginx:
     build: ./nginx
-    image: ${MACHINE_FQDN}/infrastucture/portus-nginx
+    image: ${MACHINE_FQDN}/infrastructure/portus-nginx
     restart: always
     environment:
       MACHINE_FQDN: ${MACHINE_FQDN}
