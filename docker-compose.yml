@@ -3,7 +3,6 @@ version: "2"
 services:
   portus:
     image: opensuse/portus:head
-    restart: always
     depends_on:
       - background
       - portus-db
@@ -27,7 +26,6 @@ services:
 
   background:
     image: opensuse/portus:head
-    restart: always
     depends_on:
       - portus-db
     env_file:
@@ -50,7 +48,6 @@ services:
 
   portus-db:
     image: library/mariadb:10.0.23
-    restart: always
     command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci --init-connect='SET NAMES UTF8;' --innodb-flush-log-at-trx-commit=0
     environment:
       MYSQL_DATABASE: portus_production
@@ -61,7 +58,6 @@ services:
 
   registry:
     image: registry:2.6
-    restart: always
     env_file:
       - registry.env
     environment:
@@ -85,15 +81,11 @@ services:
   nginx:
     build: ./nginx
     image: ${MACHINE_FQDN}/infrastructure/portus-nginx
-    restart: always
     environment:
       MACHINE_FQDN: ${MACHINE_FQDN}
     volumes:
       - certificates:/secrets:ro
       - portus-static:/srv/Portus/public:ro
-    ports:
-      - 80:80
-      - 443:443
     links:
       - registry
       - portus
@@ -104,3 +96,4 @@ volumes:
   registry:
   certificates:
     external: true
+    # driver: rancher-nfs
