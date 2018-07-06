@@ -104,22 +104,55 @@ Deploying in Rancher OS may be as simple as connecting to `ssh` and executing on
 
 ```bash
 GIT_REPO="https://github.com/IAAA-Lab/ci-infrastucture"
-ENV_FQDN="MACHINE_FQDN=pumuky.cps.unizar.es"
-ENV_KEYBASE="SECRET_KEY_BASE=randme"
-ENV_PASSWORD="SECRET_MASTER_PASSWORD=changeme"
+ENV_FQDN="MACHINE_FQDN={your machine FQDN or localhost}"
+ENV_KEYBASE="SECRET_KEY_BASE={a random key base}"
+ENV_PASSWORD="SECRET_MASTER_PASSWORD={a password to access all services. KEEP IT SECRET}"
 GIT_CLONE_COMMAND="git clone ${GIT_REPO} ."
-DOCKER_COMPOSE_COMAND="${ENV_FQDN} ${ENV_KEYBASE} ${ENV_PASSWORD} docker-compose -f docker-compose.yml up -d"
+DOCKER_COMPOSE_OPS="${ENV_FQDN} ${ENV_KEYBASE} ${ENV_PASSWORD} docker-compose -f docker-compose.yml"
 
 docker run --rm \
 -w /ci-infrastucture \
 -v /var/run/docker.sock:/var/run/docker.sock \
 docteurklein/compose-ci \
-sh -c "${GIT_CLONE_COMMAND} && ${DOCKER_COMPOSE_COMAND}"
+sh -c "${GIT_CLONE_COMMAND} && ${DOCKER_COMPOSE_OPS} up -d"
 ```
 Note:
 - `--rm` makes the container auto-removable.
 - `-w` defines `workdir`. `docker-compose` uses it as `stack` name if none is provided.
 - Specifying the `docker-compose.yml` file ignores the `docker-compose.override.yml` which is used in development.
+
+### Deploy in Rancher
+
+This work-arround is a bit trickier. First we need to have an external volume with the certs named `certificates`. The volume driver can be `local` or `rancher-nfs`. If you choose `rancher-nfs`, follow another tutorial to get it done.
+
+Having the volume, it's also necessary to install the `rancher-compose` binary in your developing machine and set ti up by following it's instructions.
+
+When deploying, Rancher needs to have access to the custom image. The best way to achieve that is by:
+- Deploying an ad-hoc Docker Registry with the certs
+- Receive the image
+- Deploy the final service with `rancher-compose` (it will fail because of the port 443 will be in use)
+- Stop the ad-hoc registry
+- Update de final service (the image will be already pulled, so it wont fail)
+
+Command to deploy the registry:
+
+```bash
+docker run -d --rm \
+-v /mnt/nfs/certificates:/secrets:ro \
+-e REGISTRY_HTTP_ADDR=0.0.0.0:443 \
+-e REGISTRY_HTTP_TLS_CERTIFICATE=/secrets/domain.crt \
+-e REGISTRY_HTTP_TLS_KEY=/secrets/domain.key \
+-p 443:443 \
+registry:2.6
+```
+
+Command to deploy the final service:
+```bahs
+MACHINE_FQDN={your machine FQDN or localhost}
+SECRET_KEY_BASE={a random key base}
+SECRET_MASTER_PASSWORD={a password to access all services. KEEP IT SECRET}
+rancher-compose -f docker-compose.yml up
+```
 
 ## Development
 
